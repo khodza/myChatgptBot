@@ -1,24 +1,40 @@
-import { Telegraf,session } from "telegraf";
-import config from 'config'
+import { Telegraf,session,Scenes } from "telegraf";
 import { message}  from 'telegraf/filters'
 import { ogg } from "./ogg.js";
+import  dotenv from 'dotenv';
+dotenv.config();
 import { openai } from "./openAi.js";
 import {code} from "telegraf/format"
-
+import{startKeyboard} from "./keyboards/start-keyboard.js"
+import {handleCommand} from "./keyboard-handlers/keyboard-handler.js"
+import { wizardScene } from "./scenes/chatgp-scene.js";
+import { globalCallbackQueryHandler } from "./keyboard-handlers/globalInlineHandler.js";
 const INNITIAL_SESSION ={
     messages:[]
 }
-const bot = new Telegraf(config.get('TELEGRAM_TOKEN'));
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 bot.use(session())
-bot.command('new',async(ctx)=>{
+
+bot.action('callback_query',globalCallbackQueryHandler)
+// Register the wizard scene with the bot
+const stage = new Scenes.Stage([wizardScene]);
+bot.use(stage.middleware());
+
+// bot.command('new',async(ctx)=>{
+//     ctx.session =INNITIAL_SESSION
+//     console.log(ctx.session.messages);
+//     await ctx.reply('Wait for new voice request')
+// })
+
+// Start the bot
+bot.start((ctx) => {
     ctx.session =INNITIAL_SESSION
-    console.log(ctx.session.messages);
-    await ctx.reply('Wait for new voice request')
-})
-bot.command('start',async(ctx)=>{
-    ctx.session =INNITIAL_SESSION
-    await ctx.reply('Wait for new voice request')
-})
+    startKeyboard(ctx)
+});
+
+bot.on('text', handleCommand);
+
+
 bot.on(message('voice'),async(ctx)=>{
     ctx.session ??= INNITIAL_SESSION
     try{
@@ -43,15 +59,24 @@ bot.on(message('voice'),async(ctx)=>{
 bot.on(message('text'),async(ctx)=>{
     ctx.session ??= INNITIAL_SESSION
     try{
-        await ctx.reply(code(`Text message accepted please wait for response 🕓✅`))
-        await ctx.replyWithHTML(`<b> 🫵🏼 Your request:\n\n${ctx.message.text}</b>`)
-        ctx.session.messages.push({role:openai.roles.USER,content:ctx.message.text})
-        const response = await openai.chat(ctx.session.messages)
-        ctx.session.messages.push({role:openai.roles.ASSISTANT,content:response.content})
-        await ctx.reply(response.content)
-        console.log(ctx.session.messages);
+
+        // // image create
+        const res = await openai.CreateImage(ctx.message.text);
+        if(!res){
+          return ctx.reply(`There was an error while generating image , make sure that you provided valid prompt 🤨🔞`)
+      }
+        // console.log(res);
+        ctx.reply(res)
+        // chat
+        // await ctx.reply(code(`Text message accepted please wait for response 🕓✅`))
+        // await ctx.replyWithHTML(`<b> 🫵🏼 Your request:\n\n${ctx.message.text}</b>`)
+        // ctx.session.messages.push({role:openai.roles.USER,content:ctx.message.text})
+        // const response = await openai.chat(ctx.session.messages)
+        // await ctx.reply(response.content)
+        // ctx.session.messages.push({role:openai.roles.ASSISTANT,content:response.content})
     }catch(e){
-        console.error(e);
+        // console.error(e);
+        ctx.reply(e)
     }
 })
 bot.launch()

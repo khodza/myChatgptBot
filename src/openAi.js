@@ -1,6 +1,8 @@
 import { OpenAIApi,Configuration } from "openai"
-import config from "config";
 import {createReadStream} from 'fs'
+import  dotenv from 'dotenv';
+dotenv.config();
+
 
 class OpenAi {
     roles ={
@@ -21,6 +23,21 @@ class OpenAi {
             return response.data.choices[0].message 
         }catch(e){console.error(e);}
     }
+    async CreateImage(prompt){
+        try{
+            const response = await this.openai.createImage({
+                prompt,
+                n:2,
+                size:"1024x1024"
+            });
+            
+            const imageUrl = response.data.data[0].url;
+            return imageUrl;
+        }catch(e){
+            // console.error(e);
+            // return e;
+        }
+    }
     async transportation(filePath){
         try{
             const response =await this.openai.createTranscription(createReadStream(filePath),'whisper-1');
@@ -31,4 +48,5 @@ class OpenAi {
     }
 
 }
-export const openai = new OpenAi(config.get('OPENAI_KEY'))
+const token = process.env.OPENAI_KEY
+export const openai = new OpenAi(token)
