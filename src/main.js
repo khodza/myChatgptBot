@@ -30,7 +30,12 @@ bot.on('text', globalKeyboardHandler);
 bot.on('callback_query',globalCallbackQueryHandler);
 
 //LAUNCHING THE BOT
-bot.launch()
+const PORT = process.env.PORT || 3000;
+bot.launch({
+  webhook: {
+    domain: 'https://aikhodzabot.herokuapp.com',
+    PORT}
+})
 console.log(`Bot started`);
 
 process.once('SIGINT',()=>bot.use('SIGINT'))
